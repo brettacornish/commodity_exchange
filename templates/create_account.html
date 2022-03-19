@@ -1,0 +1,22 @@
+{% extends "parent.html" %}
+
+
+{% block content %}
+
+<center><h4>Create Account</h4></center>
+<form action="#" method="post" style="text-align:center">
+	
+	<p><input type="text" name="email" placeholder="Email"></p>
+	
+	<p><input type="password" name="password" placeholder="Password (16 char max)" maxlength="16"></p>
+	
+	<p><input type="password" name="c_password" placeholder="Confirm Password" maxlength="16"></p>
+	
+	<p><input type="submit" value="Submit"/></p>
+	
+	<h3 style="color:red; text-align:center;">{{err}}</h3>
+	
+</form>
+
+{% endblock %}
+

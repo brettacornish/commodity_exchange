@@ -1,0 +1,27 @@
+{% extends "parent.html" %}
+
+
+{% block content %}
+<div id="balance">
+<center>
+<h1>Balances</h1>
+Rice: {{ current_user.rice }}
+<br>
+USD: {{ current_user.usd }}
+</center>
+</div>
+
+
+<center><h4>Delete Account</h4></center>
+<form action="#" method="post" style="text-align:center">
+	<p><input type="submit" name="delete_account" value="Delete Account"/></p>
+</form>
+
+
+<style>
+#balance{
+font-size:32px;
+}
+</style>
+
+{% endblock %}

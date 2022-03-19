@@ -1,0 +1,18 @@
+{% extends "parent.html" %}
+
+
+{% block content %}
+
+<center><h4>Login</h4></center>
+<form action="#" method="post" style="text-align:center">
+	
+	<p><input type="text" name="email" placeholder="Email"></p>
+	
+	<p><input type="password" name="password" placeholder="Password" maxlength="16"></p>
+	
+	<p><input type="submit" value="Submit"/></p>
+	
+	<h3 style="color:red; text-align:center;">{{err}}</h3>
+</form>
+
+{% endblock %}

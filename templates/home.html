@@ -1,0 +1,161 @@
+{% extends "parent.html" %}
+
+
+{% block content %}
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+
+<script type="text/javascript">
+$(document).ready(function() {
+
+	var socket = io.connect('/');
+
+	socket.on('connect', function() {
+		socket.send('{{current_user.email}} has connected!');
+	});
+
+	socket.on('message', function(msg)){
+		$("#messages").append('<li>'msg+'</li>');
+		//$("#recent_orders tbody").prepend('<tr><td>test</td><td>test</td><td>test</td></tr>');
+		  var table = document.getElementById("recent_orders");
+		  var row = table.insertRow(1);
+		  var cell1 = row.insertCell(0);
+		  var cell2 = row.insertCell(1);
+		  cell1.innerHTML = msg;
+		  cell2.innerHTML = msg;
+	});
+
+	$('#sendbutton').on('click', function() {
+		socket.send($('#myMessage').val());
+		$('#myMessage').val('');
+	});
+
+});
+</script>
+<ul id="messages"></ul>
+<input type="text" id="myMessage">
+<button id="sendbutton">Send</button>
+
+
+
+
+
+<div class="row">
+  <div class="column">
+	<h2>Bid Orders</h2>
+    <table>
+      <tr>
+        <th>Coin</th>
+        <th>Price</th>
+		<th>Quantity</th>
+      </tr>
+      <tr>
+        <td>Jill</td>
+        <td>Smith</td>
+        <td>50</td>
+      </tr>
+      <tr>
+        <td>Eve</td>
+        <td>Jackson</td>
+        <td>94</td>
+      </tr>
+      <tr>
+        <td>Adam</td>
+        <td>Johnson</td>
+        <td>67</td>
+      </tr>
+    </table>
+  </div>
+  <div class="column">
+    <h2>Ask Orders</h2>
+    <table>
+      <tr>
+        <th>Coin</th>
+        <th>Price</th>
+		<th>Quantity</th>
+      </tr>
+      <tr>
+        <td>Jill</td>
+        <td>Smith</td>
+        <td>50</td>
+      </tr>
+      <tr>
+        <td>Eve</td>
+        <td>Jackson</td>
+        <td>94</td>
+      </tr>
+      <tr>
+        <td>Adam</td>
+        <td>Johnson</td>
+        <td>67</td>
+      </tr>
+    </table>
+  </div>
+  <div class="column">
+	<h2>Recent Orders</h2>
+    <table id="recent_orders">
+      <tr>
+        <th>Price</th>
+		<th>Quantity</th>
+      </tr>
+      <tr>
+        <td>Smith</td>
+        <td>50</td>
+      </tr>
+      <tr>
+        <td>Jackson</td>
+        <td>94</td>
+      </tr>
+      <tr>
+        <td>Johnson</td>
+        <td>67</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+
+
+
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+.row {
+  margin-left:-5px;
+  margin-right:-5px;
+}
+  
+.column {
+  float: left;
+  width: 33.33%;
+  padding: 5px;
+}
+
+/* Clearfix (clear floats) */
+.row::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+  border: 1px solid #ddd;
+}
+
+th, td {
+  text-align: left;
+  padding: 16px;
+}
+
+tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends "parent.html" %}
+
+
+{% block content %}
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+
+<script type="text/javascript">
+$(document).ready(function() {
+
+	var socket = io.connect('/');
+
+	socket.on('message', function(msg) {
+			if(msg["action"] === "open_order_update"){
+			var table = document.getElementById("ask_orders");
+			table.innerHTML = "";
+			for (let i = msg["buy"].length - 1; i >= 0; i--) {
+			var row = table.insertRow(0);
+			var cell1 = row.insertCell(0);
+			var cell2 = row.insertCell(1);
+			cell1.innerHTML = "$" + msg["buy"][i]["price"];
+			cell2.innerHTML = msg["buy"][i]["quantity"];
+			
+			}; 
+			
+			var table = document.getElementById("bid_orders");
+			table.innerHTML = "";
+			for (let i = msg["sell"].length - 1; i >= 0; i--) {
+			var row = table.insertRow(0);
+			var cell1 = row.insertCell(0);
+			var cell2 = row.insertCell(1);
+			cell1.innerHTML = "$" + msg["sell"][i]["price"];
+			cell2.innerHTML = msg["sell"][i]["quantity"];
+			
+			
+			
+			};
+			
+		};
+			if(msg["action"] === "recent_trade_update"){
+				console.log(msg);
+				var table = document.getElementById("recent_orders");
+				for (let i = 0 ; i < msg["orders"].length; i++) {
+				var row = table.insertRow(1);
+				var cell1 = row.insertCell(0);
+				var cell2 = row.insertCell(1);
+				cell1.innerHTML = "$" + msg["orders"][i]["price"];
+				cell2.innerHTML = msg["orders"][i]["quantity"];
+				
+				}
+			};
+
+	});
+});
+</script>
+
+
+<form action="#" method="post" style="text-align:center;">
+
+
+	<br>
+	<br>
+	<select name="commodity" id="cars">
+		<option value="rice">Rice</option>
+	</select>
+
+	<br>
+	<br>
+	<label for="price">Price</label>
+	<p><input type="number" name="price" placeholder="Price"></p>
+
+	<label for="quantity">Quantity</label>
+	<p><input type="number" name="quantity" placeholder="Quantity" ></p>
+
+	<input type="submit" name="trade_type" value="Buy"/> <input type="submit" name="trade_type" value="Sell"/>
+	
+	<h3 id="trade_error" style="color:red; text-align:center;">{{err}}</h3>
+	
+</form>
+
+
+
+<div class="row">
+  <div class="column">
+	<h2>Open Bid Orders</h2>
+    <table >
+      <tr>
+        <th>Price</th>
+		<th>Quantity</th>
+      </tr>
+	  <tfoot id="bid_orders">
+	  {%for order in sell_orders%}
+
+	  <tr>
+        <td>${{order.price}}</td>
+		<td>{{order.quantity}}</td>
+      </tr>
+	  
+	  {%endfor%}
+	  </tfoot>
+    </table>
+  </div>
+  <div class="column">
+    <h2>Open Ask Orders</h2>
+    <table >
+      <tr>
+        <th>Price</th>
+		<th>Quantity</th>
+      </tr>
+	  <tfoot id="ask_orders">
+	  {%for order in buy_orders%}
+	  
+	  <tr>
+        <td>${{order.price}}</td>
+		<td>{{order.quantity}}</td>
+      </tr>
+	  
+	  {%endfor%}
+	  </tfoot>
+    </table>
+  </div>
+  
+  <div class="column">
+	<h2>Recent Trades</h2>
+    <table id="recent_orders">
+      <tr>
+        <th>Price</th>
+		<th>Quantity</th>
+      </tr>
+	  {%if request.args.get('price')%}
+	  <tr>
+        <td>{{ request.args.get('price') }}</td>
+		<td>{{request.args.get('quantity')}}</td>
+      </tr>
+	  {%endif%}
+    </table>
+  </div>
+</div>
+
+
+
+
+
+<style>
+
+
+
+* {
+  box-sizing: border-box;
+}
+
+.row {
+  margin-left:-5px;
+  margin-right:-5px;
+}
+  
+.column {
+  float: left;
+  width: 33.33%;
+  padding: 5px;
+}
+
+/* Clearfix (clear floats) */
+.row::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+  border: 1px solid #ddd;
+}
+
+th, td {
+  text-align: center;
+  padding: 5px;
+}
+
+th {
+background-color: #f2f2f2;
+}
+
+tfoot tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+</style>
+{% endblock %}

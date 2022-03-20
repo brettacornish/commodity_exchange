@@ -271,6 +271,8 @@ def create_account():
 @app.route("/login", methods=["POST","GET"])
 def login():
     if request.method == "POST":
+        if request.form["email"] == "" or request.form["password"] == "":
+            return render_template("login.html", err="All fields required")
         user = User.query.filter_by(email=request.form["email"]).first()
         if not user or not check_password_hash(user.password, request.form["password"]):
             return render_template("login.html", err="Invalid Credentials")

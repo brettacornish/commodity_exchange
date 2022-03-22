@@ -54,7 +54,9 @@ class CompleteOrder(db.Model):
     quantity = db.Column(db.Integer)
     buyer_email = db.Column(db.String(320))
     seller_email = db.Column(db.String(320))
+    buy_sell = db.Column(db.String(4))
     time = db.Column(db.Float())
+
 
 
 def complete_order_fetch(limit=None):
@@ -121,7 +123,8 @@ def order_request(order_form_user):
                                                 price=open_order.price,
                                                 quantity=open_order.quantity,
                                                 buyer_email=current_user.email,
-                                                seller_email=open_order.email))
+                                                seller_email=open_order.email,
+                                                time=time.time()))
                                                 
                     quantity_balance -= open_order.quantity
                     current_user.usd -= open_order.quantity * open_order.price
@@ -136,7 +139,8 @@ def order_request(order_form_user):
                                                 price=open_order.price,
                                                 quantity=quantity_balance,
                                                 buyer_email=current_user.email,
-                                                seller_email=open_order.email))
+                                                seller_email=open_order.email,
+                                                time=time.time()))
                                                 
                     current_user.usd -= quantity_balance * open_order.price
                     open_order.user.usd += quantity_balance * open_order.price
@@ -169,7 +173,7 @@ def order_request(order_form_user):
                 trades.append({"price":order.price, "quantity":order.quantity, "buysell":None})
             return {"action":"recent_trade_update", "orders": trades}
         else:
-            return {"action":"error", "message":"Insufficient funds or commodity"}
+            return {"action":"error", "message":"Insufficient funds or commodity", "orders":False}
             
             
     #sell order processing        
@@ -188,7 +192,8 @@ def order_request(order_form_user):
                                                 price=open_order.price,
                                                 quantity=open_order.quantity,
                                                 buyer_email=open_order.email,
-                                                seller_email=current_user.email))
+                                                seller_email=current_user.email,
+                                                time=time.time()))
                                                 
                     quantity_balance -= open_order.quantity
                     current_user.usd += open_order.quantity * open_order.price
@@ -203,7 +208,8 @@ def order_request(order_form_user):
                                                 price=open_order.price,
                                                 quantity=quantity_balance,
                                                 buyer_email=current_user.email,
-                                                seller_email=open_order.email))
+                                                seller_email=open_order.email,
+                                                time=time.time()))
                     current_user.usd += quantity_balance * open_order.price
                     current_user.rice -= quantity_balance
                     open_order.user.rice += quantity_balance
@@ -234,10 +240,10 @@ def order_request(order_form_user):
             return {"action":"recent_trade_update", "orders": trades}
             
         else:
-            return {"action":"error", "message":"Insufficient funds or commodity"}
+            return {"action":"error", "message":"Insufficient funds or commodity", "orders":False}
             
     else:
-        return {"action":"error", "message":"Something went wrong"}
+        return {"action":"error", "message":"Something went wrong", "orders":False}
 
 @socketio.on('message')
 def handleMessage(msg):
@@ -329,11 +335,8 @@ def rice():
         if recent_trade_update['action'] == 'error':
             flash(recent_trade_update)
             redirect(url_for("rice"))
-        if 'orders' in recent_trade_update.keys():
+        if recent_trade_update['orders']:
             socketio.send(recent_trade_update, broadcast=True)
-        ##########################################
-        #NEED TO KEEP WORKING ON RECENT TRADE UPDATE. GET IT TO UPDATE ON ALL CLIENTS INCLUDING CURRENT TRADER
-        ##########################################
         open_orders = open_order_fetch()
         socketio.send(open_orders, broadcast=True)
         return redirect(url_for("rice"))

@@ -9,6 +9,8 @@
 <script type="text/javascript">
 $(document).ready(function() {
 
+	var user = "{{current_user.email}}"
+
 	var socket = io.connect('/');
 
 	socket.on('message', function(msg) {
@@ -136,7 +138,7 @@ $(document).ready(function() {
         <th>Price</th>
 		<th>Quantity</th>
       </tr>
-		<tfoot>
+		<tfoot id="tfoot_recent_orders">
 	  {%for order in closed_orders%}
 	  <tr>
         <td>${{order.price}}</td>
@@ -197,5 +199,8 @@ background-color: #f2f2f2;
 tfoot tr:nth-child(even) {
   background-color: #f2f2f2;
 }
+
+
+
 </style>
 {% endblock %}

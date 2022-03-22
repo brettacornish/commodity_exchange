@@ -41,6 +41,9 @@ $(document).ready(function() {
 			if(msg["action"] === "recent_trade_update"){
 				console.log(msg);
 				var table = document.getElementById("recent_orders");
+				if(document.getElementById("recent_orders").rows.length >20){
+					table.deleteRow(20);
+					}
 				for (let i = 0 ; i < msg["orders"].length; i++) {
 				var row = table.insertRow(1);
 				var cell1 = row.insertCell(0);
@@ -68,15 +71,20 @@ $(document).ready(function() {
 	<br>
 	<br>
 	<label for="price">Price</label>
-	<p><input type="number" name="price" placeholder="Price"></p>
+	<p><input type="number" name="price" placeholder="Price" required></p>
 
 	<label for="quantity">Quantity</label>
-	<p><input type="number" name="quantity" placeholder="Quantity" ></p>
+	<p><input type="number" name="quantity" placeholder="Quantity" required></p>
 
 	<input type="submit" name="trade_type" value="Buy"/> <input type="submit" name="trade_type" value="Sell"/>
 	
-	<h3 id="trade_error" style="color:red; text-align:center;">{{err}}</h3>
-	
+	{%with messages = get_flashed_messages()%}
+		{% for message in messages %}
+			{% if message['action'] == "error"  %}
+				<h3 id="trade_error" style="color:red; text-align:center;">{{message['message']}}</h3>
+			{% endif %}
+		{% endfor %}
+	{% endwith %}
 </form>
 
 
@@ -128,12 +136,14 @@ $(document).ready(function() {
         <th>Price</th>
 		<th>Quantity</th>
       </tr>
-	  {%if request.args.get('price')%}
+		<tfoot>
+	  {%for order in closed_orders%}
 	  <tr>
-        <td>{{ request.args.get('price') }}</td>
-		<td>{{request.args.get('quantity')}}</td>
+        <td>${{order.price}}</td>
+		<td>{{order.quantity}}</td>
       </tr>
-	  {%endif%}
+	  {%endfor%}
+		</tfoot>
     </table>
   </div>
 </div>

@@ -1,6 +1,6 @@
-import re,random, json, os, time
+import re, time
 from flask_socketio import SocketIO, send
-from flask import Flask, flash, render_template, redirect, url_for, request, session
+from flask import Flask, flash, render_template, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy 
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -57,14 +57,25 @@ class CompleteOrder(db.Model):
     time = db.Column(db.Float())
 
 
+def complete_order_fetch(limit=None):
+    order_list = []
+    if limit:
+        complete_orders = CompleteOrder.query.order_by(CompleteOrder.id.desc()).limit(limit)
+    else:
+        complete_orders = CompleteOrder.query.order_by(CompleteOrder.id.desc())
+    for order in complete_orders:
+        order_list.append({"price":order.price, "quantity":order.quantity, "buysell":None})
+    return order_list
+
+
 #returns all open orders in a format for the client to parse
 def open_order_fetch(limit=False):
     if limit:
-        OpenOrders = OpenOrder.query.order_by(OpenOrder.price).limit(limit)
+        open_orders = OpenOrder.query.order_by(OpenOrder.price).limit(limit)
     else:
-        OpenOrders = OpenOrder.query.order_by(OpenOrder.price)
+        open_orders = OpenOrder.query.order_by(OpenOrder.price)
     buy_orders, sell_orders=[],[]
-    for open_order in OpenOrders:
+    for open_order in open_orders:
         cont = False
         if open_order.buy_sell == "buy":
             #if two orders are the same price they are added to that prices total
@@ -75,7 +86,7 @@ def open_order_fetch(limit=False):
                     break
             if cont:
                 continue
-            buy_orders.append({"price":open_order.price, "quantity":open_order.quantity})
+            buy_orders.append({"price":open_order.price, "quantity":open_order.quantity, "buysell":open_order.buy_sell})
         else:
             #if two orders are the same price they are added to that prices total
             for y,z in enumerate(sell_orders):
@@ -85,19 +96,19 @@ def open_order_fetch(limit=False):
                     break
             if cont:
                 continue
-            sell_orders.insert(0,{"price":open_order.price, "quantity":open_order.quantity})
+            sell_orders.insert(0,{"price":open_order.price, "quantity":open_order.quantity, "buysell":open_order.buy_sell})
     return {"buy":buy_orders, "sell":sell_orders, "action":"open_order_update"}
 
 
 #processes user order(s) and returns completed orders in a format for the client to handle
-def order_request(orderform_user):
+def order_request(order_form_user):
     orders = []
-    quantity_balance = int(orderform_user['quantity'])
+    quantity_balance = int(order_form_user['quantity'])
     
     #Buy order processing
-    if orderform_user["trade_type"] == "Buy":
+    if order_form_user["trade_type"] == "Buy":
         #Verification that user has enough money to purchase requested amount of commodity
-        if current_user.usd >= int(orderform_user['price']) * quantity_balance:
+        if current_user.usd >= int(order_form_user['price']) * quantity_balance:
             open_orders = OpenOrder.query.filter(OpenOrder.buy_sell == "buy").order_by(OpenOrder.price)
             open_order_count = 0
             for open_order in open_orders:
@@ -105,11 +116,11 @@ def order_request(orderform_user):
                 
                 #if the requested order price is greater than or equal to the price of the current open order and has same or more order quantity that the open order needs to be completed. 
                 #A complete order is created and the open order is deleted. Account balances are adjusted based off of the open order(s) being closed
-                if int(orderform_user['price']) >= open_order.price and quantity_balance >= open_order.quantity:
-                    orders.append(CompleteOrder(commodity=orderform_user['commodity'], 
-                                                price=open_order.price, 
-                                                quantity=open_order.quantity, 
-                                                buyer_email=current_user.email, 
+                if int(order_form_user['price']) >= open_order.price and quantity_balance >= open_order.quantity:
+                    orders.append(CompleteOrder(commodity=order_form_user['commodity'],
+                                                price=open_order.price,
+                                                quantity=open_order.quantity,
+                                                buyer_email=current_user.email,
                                                 seller_email=open_order.email))
                                                 
                     quantity_balance -= open_order.quantity
@@ -120,11 +131,11 @@ def order_request(orderform_user):
                     
                 #else if the requested order price is greater than or equal to the current open order price but the requested order quantity is less than the open order quantity.
                 #A complete order is created and the open order is updated to the new open order amount. Account balances are adjusted based off of the open order(s) being closed.
-                elif int(orderform_user['price']) >= open_order.price and quantity_balance > 0:
-                    orders.append(CompleteOrder(commodity=orderform_user['commodity'], 
-                                                price=open_order.price, 
-                                                quantity=quantity_balance, 
-                                                buyer_email=current_user.email, 
+                elif int(order_form_user['price']) >= open_order.price and quantity_balance > 0:
+                    orders.append(CompleteOrder(commodity=order_form_user['commodity'],
+                                                price=open_order.price,
+                                                quantity=quantity_balance,
+                                                buyer_email=current_user.email,
                                                 seller_email=open_order.email))
                                                 
                     current_user.usd -= quantity_balance * open_order.price
@@ -137,15 +148,15 @@ def order_request(orderform_user):
                     
                 #if no open orders are available but order quantity is not fulfilled a new open order is created. Account balances are adjusted based off of the open order being created.
             if open_order_count == 0 or quantity_balance > 0:
-                new_open_order = OpenOrder(commodity = orderform_user['commodity'], 
-                                      price = orderform_user['price'], 
-                                      quantity = quantity_balance, 
-                                      buy_sell = "sell", 
-                                      user_id = current_user.id, 
-                                      email = current_user.email, 
-                                      time = time.time())
+                new_open_order = OpenOrder(commodity = order_form_user['commodity'],
+                                           price = order_form_user['price'],
+                                           quantity = quantity_balance,
+                                           buy_sell = "sell",
+                                           user_id = current_user.id,
+                                           email = current_user.email,
+                                           time = time.time())
                 
-                current_user.usd -= quantity_balance * int(orderform_user['price'])
+                current_user.usd -= quantity_balance * int(order_form_user['price'])
                 quantity_balance = 0        
                 db.session.add(new_open_order)
                 
@@ -158,11 +169,12 @@ def order_request(orderform_user):
                 trades.append({"price":order.price, "quantity":order.quantity, "buysell":None})
             return {"action":"recent_trade_update", "orders": trades}
         else:
-            return {"action":"error", "message":"Insuffient funds or commodity"}
+            return {"action":"error", "message":"Insufficient funds or commodity"}
             
             
     #sell order processing        
-    elif orderform_user["trade_type"] == "Sell":
+    elif order_form_user["trade_type"] == "Sell":
+        #Verification that user has enough commodity to sell 
         if current_user.rice >= quantity_balance:
             open_orders = OpenOrder.query.filter(OpenOrder.buy_sell == "sell").order_by(OpenOrder.price.desc())
             open_order_count = 0
@@ -171,11 +183,11 @@ def order_request(orderform_user):
                 
                 #if the requested order price is less than or equal to the price of the current open order and has same or more order quantity that the open order needs to be completed. 
                 #A complete order is created and the open order is deleted. Account balances are adjusted based off of the open order(s) being closed
-                if int(orderform_user['price']) <= open_order.price and quantity_balance >= open_order.quantity:
-                    orders.append(CompleteOrder(commodity=orderform_user['commodity'], 
-                                                price=open_order.price, 
-                                                quantity=open_order.quantity, 
-                                                buyer_email=open_order.email, 
+                if int(order_form_user['price']) <= open_order.price and quantity_balance >= open_order.quantity:
+                    orders.append(CompleteOrder(commodity=order_form_user['commodity'],
+                                                price=open_order.price,
+                                                quantity=open_order.quantity,
+                                                buyer_email=open_order.email,
                                                 seller_email=current_user.email))
                                                 
                     quantity_balance -= open_order.quantity
@@ -186,27 +198,27 @@ def order_request(orderform_user):
                 
                 #else if the requested order price is greater than or equal to the current open order price but the requested order quantity is less than the open order quantity.
                 #A complete order is created and the open order is updated to the new open order amount. Account balances are adjusted based off of the open order(s) being closed.
-                elif int(orderform_user['price']) <= open_order.price and quantity_balance > 0:
-                    orders.append(CompleteOrder(commodity=orderform_user['commodity'], 
-                                                price=open_order.price, 
-                                                quantity=quantity_balance, 
-                                                buyer_email=current_user.email, 
+                elif int(order_form_user['price']) <= open_order.price and quantity_balance > 0:
+                    orders.append(CompleteOrder(commodity=order_form_user['commodity'],
+                                                price=open_order.price,
+                                                quantity=quantity_balance,
+                                                buyer_email=current_user.email,
                                                 seller_email=open_order.email))
                     current_user.usd += quantity_balance * open_order.price
                     current_user.rice -= quantity_balance
                     open_order.user.rice += quantity_balance
-                    open_order.quantity -= quantity_balance 
+                    open_order.quantity -= quantity_balance
                     quantity_balance = 0
                     break
                     
             #if no open orders are available but order quantity is not fulfilled a new open order is created. Account balances are adjusted based off of the open order being created.
             if open_order_count == 0 or quantity_balance > 0:
-                new_open_order = OpenOrder(commodity = orderform_user['commodity'], 
-                                      price = orderform_user['price'], 
-                                      quantity = quantity_balance, 
-                                      buy_sell = "buy", 
-                                      user_id = current_user.id, 
-                                      email = current_user.email, time = time.time())
+                new_open_order = OpenOrder(commodity = order_form_user['commodity'],
+                                           price = order_form_user['price'],
+                                           quantity = quantity_balance,
+                                           buy_sell = "buy",
+                                           user_id = current_user.id,
+                                           email = current_user.email, time = time.time())
                                       
                 current_user.rice -= quantity_balance                      
                 quantity_balance = 0                      
@@ -222,9 +234,10 @@ def order_request(orderform_user):
             return {"action":"recent_trade_update", "orders": trades}
             
         else:
-            return {"action":"error", "message":"Insuffient funds or commodity"}
+            return {"action":"error", "message":"Insufficient funds or commodity"}
             
-            
+    else:
+        return {"action":"error", "message":"Something went wrong"}
 
 @socketio.on('message')
 def handleMessage(msg):
@@ -234,7 +247,7 @@ def handleMessage(msg):
 @app.route('/create_account',methods=["GET","POST"])
 def create_account():
     if request.method == "POST":
-        #validates emai
+        #validates email
         if not re.match(r"[^@]+@[^@]+\.[^@]+", request.form["email"]):
             return render_template("create_account.html", err = "Not a valid email")
         else:
@@ -300,8 +313,8 @@ def account():
         if "delete_account" in request.form:
             db.session.delete(current_user)
             db.session.commit()
-            OpenOrders = open_order_fetch()
-            socketio.send(OpenOrders, broadcast=True)
+            open_orders = open_order_fetch()
+            socketio.send(open_orders, broadcast=True)
             return redirect(url_for("login",))
     else:
         return render_template("account.html",)
@@ -313,19 +326,24 @@ def account():
 def rice():
     if request.method == "POST":
         recent_trade_update = order_request(request.form)
-        if len(recent_trade_update['orders']) > 0:
+        if recent_trade_update['action'] == 'error':
+            flash(recent_trade_update)
+            redirect(url_for("rice"))
+        if 'orders' in recent_trade_update.keys():
             socketio.send(recent_trade_update, broadcast=True)
         ##########################################
         #NEED TO KEEP WORKING ON RECENT TRADE UPDATE. GET IT TO UPDATE ON ALL CLIENTS INCLUDING CURRENT TRADER
         ##########################################
-        OpenOrders = open_order_fetch()
-        socketio.send(OpenOrders, broadcast=True)
+        open_orders = open_order_fetch()
+        socketio.send(open_orders, broadcast=True)
         return redirect(url_for("rice"))
         
     else:
-        OpenOrders = open_order_fetch()
-        buy_orders, sell_orders = OpenOrders["buy"], OpenOrders["sell"]
-        return render_template("rice.html",data=OpenOrders, buy_orders=buy_orders, sell_orders=sell_orders)
+        #complete_orders = CompleteOrder.query.order_by(CompleteOrder.id.desc()).limit(10)
+        closed_orders = complete_order_fetch(20)
+        open_orders = open_order_fetch()
+        buy_orders, sell_orders = open_orders["buy"], open_orders["sell"]
+        return render_template("rice.html",data=open_orders, buy_orders=buy_orders, sell_orders=sell_orders, closed_orders=closed_orders)
     
 @app.route('/logout')
 @login_required
@@ -337,6 +355,5 @@ def logout():
 db.create_all()
 if __name__ == '__main__':
     print("start")
-    #app.run(debug=True)
     socketio.run(app, debug=True)
     
